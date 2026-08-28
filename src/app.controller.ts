@@ -28,4 +28,21 @@ export class AppController {
   getPage(@Param('fileName') fileName: string): string {
     return this.appService.getPage(fileName);
   }
+
+  @Get('stories/:storyId')
+  @ApiOperation({ summary: 'Get the first page of a story' })
+  @ApiParam({ name: 'storyId', example: 'mari', description: 'Name of the story folder under stories/' })
+  @ApiOkResponse({ description: 'Raw markdown of the start page', type: String })
+  getStoryStart(@Param('storyId') storyId: string): string {
+    return this.appService.getStoryStart(storyId);
+  }
+
+  @Get('stories/:storyId/pages/:pageId')
+  @ApiOperation({ summary: 'Get a page from a story by its file name (without .md)' })
+  @ApiParam({ name: 'storyId', example: 'mari', description: 'Name of the story folder under stories/' })
+  @ApiParam({ name: 'pageId', example: 'end1', description: 'Name of the markdown file in the story folder, without extension' })
+  @ApiOkResponse({ description: 'Raw markdown of the requested page', type: String })
+  getStory(@Param('storyId') storyId: string, @Param('pageId') pageId: string): string {
+    return this.appService.getStoryPage(storyId, pageId);
+  }
 }
