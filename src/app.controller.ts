@@ -14,21 +14,6 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  @Get('start')
-  @ApiOperation({ summary: 'Get the first page of the story' })
-  @ApiOkResponse({ description: 'Raw markdown of the start page', type: String })
-  getStart(): string {
-    return this.appService.getStart();
-  }
-
-  @Get('page/:fileName')
-  @ApiOperation({ summary: 'Get a story page by its file name (without .md)' })
-  @ApiParam({ name: 'fileName', example: 'end1', description: 'Name of the markdown file in story/, without extension' })
-  @ApiOkResponse({ description: 'Raw markdown of the requested page', type: String })
-  getPage(@Param('fileName') fileName: string): string {
-    return this.appService.getPage(fileName);
-  }
-
   @Get('stories/:storyId')
   @ApiOperation({ summary: 'Get the first page of a story' })
   @ApiParam({ name: 'storyId', example: 'mari', description: 'Name of the story folder under stories/' })
