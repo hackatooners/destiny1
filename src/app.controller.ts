@@ -37,7 +37,7 @@ export class AppController {
     return this.appService.getStoryStart(storyId);
   }
 
-  @Get('stories/:storyId/pages/:pageId')
+  @Get('stories/:storyId/:pageId')
   @ApiOperation({ summary: 'Get a page from a story by its file name (without .md)' })
   @ApiParam({ name: 'storyId', example: 'mari', description: 'Name of the story folder under stories/' })
   @ApiParam({ name: 'pageId', example: 'end1', description: 'Name of the markdown file in the story folder, without extension' })

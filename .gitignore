@@ -2,6 +2,11 @@
 /dist
 /node_modules
 /build
+/tmp
+/out-tsc
+
+# TypeScript incremental cache
+*.tsbuildinfo
 
 # Logs
 logs
@@ -17,6 +22,7 @@ lerna-debug.log*
 
 # Tests
 /coverage
+*.lcov
 /.nyc_output
 
 # IDEs and editors
@@ -35,12 +41,11 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# dotenv environment variable files
+# secrets
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env.*
+.secrets
+.secrets.*
 
 # temp directory
 .temp
