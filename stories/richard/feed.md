@@ -17,4 +17,4 @@ found out he had needed to say yes within the hour, never found out the recruite
 waiting on a reply that was never going to come. He just kept scrolling, and the new job kept
 being someone else's.
 
-You lost the job.
+Richard lost the job.

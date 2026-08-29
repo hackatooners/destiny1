@@ -14,3 +14,5 @@ she hadn't chosen to break. "I really thought this one would work out for you."
 Richard thanked her anyway, hung up, and sat with the quiet of his kitchen for a while,
 wondering if a different answer, given in a different tone, might have bought him the same
 job with none of the honesty attached.
+
+Richard lost the job.

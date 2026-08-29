@@ -1,4 +1,4 @@
-# The Slip
+# AI Slop
 
 When Rosie came back on the line, Richard didn't wait for her to speak first. "Before anything
 else," he said, "I have to mention, the email I got, the body of it wasn't right, it looked
@@ -16,3 +16,5 @@ Two days later the rejection came through, clean and templated, no mention of AI
 or slop, just "we've decided to move forward with another candidate." Richard reread the
 sentence a few times, sure there was more to it than that, sure he had done nothing wrong
 except notice something he wasn't supposed to say out loud.
+
+Richard lost the job.

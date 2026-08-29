@@ -15,3 +15,5 @@ mattered, only sure that one of them had been enough.
 He never did find out what that email glitch had been about. Some assistant somewhere had
 almost sent something it shouldn't have, or had finished exactly what it was supposed to, and
 either way it didn't matter anymore. He had the job.
+
+Richard got the job.
