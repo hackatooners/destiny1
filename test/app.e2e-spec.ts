@@ -25,9 +25,10 @@ describe('AppController (e2e)', () => {
   // request() accepts it either way, so dropping it costs nothing.
   let app: INestApplication;
 
-  // beforeAll, not beforeEach: AppModule pulls in ObserveModule.forRoot(), which spawns a
-  // detached worker process per app instance. Booting one app for the whole file (instead
-  // of ~10) is faster and avoids Vitest hanging on open handles at the end of the run.
+  // beforeAll, not beforeEach: with no Observe credentials in the environment
+  // (tests also ignore .env via NODE_ENV=test), no ObserveAgentWorker spawns —
+  // but booting one app for the whole file is still faster than ~10 and avoids
+  // Vitest hanging on open handles at the end of the run.
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],

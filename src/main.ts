@@ -1,11 +1,15 @@
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule, ObserveInstrument } from './app.module.js';
+import { ObserveInstrument, observeEnabled } from './config/observe.js';
+import { AppModule } from './app.module.js';
 import { configureApp } from './configure-app.js';
 
 async function bootstrap() {
+  // Static imports above (app.module.js -> its decorator -> the credential
+  // gate) all finish evaluating before this line runs, so observeEnabled is
+  // already settled here. Passing undefined simply skips instrumentation.
   const app = await NestFactory.create(AppModule, {
-    instrument: ObserveInstrument,
+    instrument: observeEnabled ? ObserveInstrument : undefined,
   });
 
   // Registers the global ValidationPipe. This lives in configure-app.ts rather than
