@@ -1,7 +1,23 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { ApiOperation, ApiOkResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Header, Param } from '@nestjs/common';
+import { ApiOperation, ApiOkResponse, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { AppService } from './app.service.js';
 import { StoryIdParams, StoryPageParams } from './story.params.js';
+
+/**
+ * Story bodies are markdown, so they must be labeled as such.
+ *
+ * Without @Header, Express labels any string return "text/html" — res.send() only picks a
+ * default when Content-Type is unset, and the decorator sets it first. That mislabel is
+ * what makes browsers mangle pages today: they parse the markdown AS HTML, collapse the
+ * line breaks, and print "[buceo profesional](end1.md)" literally.
+ *
+ * What this changes: Chrome/Edge display the source verbatim as plain text, like a .txt
+ * (Firefox may offer a download instead). What it does NOT change: no browser renders
+ * text/markdown as a formatted document (still true in 2026) — links stay unclickable
+ * either way. This is truth in labeling, not rendering; the options for real rendering
+ * are in docs/browser-presentation-options.md.
+ */
+const MARKDOWN_CONTENT_TYPE = 'text/markdown; charset=utf-8';
 
 @ApiTags('story')
 @Controller()
@@ -36,15 +52,25 @@ export class AppController {
    * DTO layer and the app is still safe; delete story.paths.ts and it is not.
    */
   @Get('stories/:storyId')
+  @Header('Content-Type', MARKDOWN_CONTENT_TYPE)
+  @ApiProduces(MARKDOWN_CONTENT_TYPE)
   @ApiOperation({ summary: 'Get the first page of a story' })
-  @ApiOkResponse({ description: 'Raw markdown of the start page', type: String })
+  @ApiOkResponse({
+    description: `Raw markdown of the start page (Content-Type: ${MARKDOWN_CONTENT_TYPE})`,
+    type: String,
+  })
   getStoryStart(@Param() params: StoryIdParams): string {
     return this.appService.getStoryStart(params.storyId);
   }
 
   @Get('stories/:storyId/:pageId')
+  @Header('Content-Type', MARKDOWN_CONTENT_TYPE)
+  @ApiProduces(MARKDOWN_CONTENT_TYPE)
   @ApiOperation({ summary: 'Get a page from a story by its file name (without .md)' })
-  @ApiOkResponse({ description: 'Raw markdown of the requested page', type: String })
+  @ApiOkResponse({
+    description: `Raw markdown of the requested page (Content-Type: ${MARKDOWN_CONTENT_TYPE})`,
+    type: String,
+  })
   getStory(@Param() params: StoryPageParams): string {
     return this.appService.getStoryPage(params.storyId, params.pageId);
   }

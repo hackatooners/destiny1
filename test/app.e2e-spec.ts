@@ -73,6 +73,25 @@ describe('AppController (e2e)', () => {
     });
   });
 
+  describe('content type: story bodies are labeled text/markdown, not text/html', () => {
+    // The bug this guards against is silent regression to Express's default: if the
+    // @Header decorators are removed, these responses go back to text/html and browsers
+    // start collapsing the markdown's line breaks again — but every other test in this
+    // file would still pass, because they only look at the body.
+    it.each(['/stories/mari', '/stories/richard', '/stories/richard/aislop'])(
+      'GET %s -> Content-Type text/markdown',
+      async (path) => {
+        const res = await request(app.getHttpServer()).get(path).expect(200);
+        expect(res.headers['content-type']).toBe('text/markdown; charset=utf-8');
+      },
+    );
+
+    it('GET / stays text/html — only file content is markdown', async () => {
+      const res = await request(app.getHttpServer()).get('/').expect(200);
+      expect(res.headers['content-type']).toContain('text/html');
+    });
+  });
+
   describe('missing resources are 404, never 200 with an error string', () => {
     // The original bug was not only traversal: the service RETURNED the string
     // "Error reading file: ..." on any read failure, and Nest serialized that as 200.
