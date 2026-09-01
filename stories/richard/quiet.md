@@ -16,5 +16,5 @@ sealed somewhere upstream, in a system neither of them controlled anymore.
 "Let me see what I can do," she said, and for the first time since the phone rang, Richard felt
 like there was still a door open somewhere.
 
-[Rosie came back after talking to the hiring manager](hiring.md)
+- [Rosie came back after talking to the hiring manager](hiring.md)
 

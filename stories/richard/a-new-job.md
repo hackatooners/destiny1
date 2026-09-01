@@ -13,5 +13,5 @@ read interview outcome. It could have been a warm welcome but it probably was no
 
 He streched to reach his iphone and 
 
-[called Rosie the recruiter to ask about the interview outcome](rosie.md)
-[opened instagram and got lost in the feed](feed.md)
+- [called Rosie the recruiter to ask about the interview outcome](rosie.md)
+- [opened instagram and got lost in the feed](feed.md)

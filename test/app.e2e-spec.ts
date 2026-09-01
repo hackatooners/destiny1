@@ -47,8 +47,8 @@ describe('AppController (e2e)', () => {
     await app.close();
   });
 
-  it('/ (GET)', () =>
-    request(app.getHttpServer()).get('/').expect(200).expect('Hello World!'));
+  it('GET /health -> 200 with the health message', () =>
+    request(app.getHttpServer()).get('/health').expect(200).expect('destiny1 ok'));
 
   describe('happy path', () => {
     it('GET /stories/richard -> 200, the start page named in meta.json', async () => {
@@ -87,9 +87,72 @@ describe('AppController (e2e)', () => {
       },
     );
 
-    it('GET / stays text/html — only file content is markdown', async () => {
+    it('GET /health stays text/html — only file content is markdown', async () => {
+      const res = await request(app.getHttpServer()).get('/health').expect(200);
+      expect(res.headers['content-type']).toContain('text/html');
+    });
+  });
+
+  describe('HTML reader: / and /read/...', () => {
+    it('GET / -> the story index, both stories linked by title', async () => {
       const res = await request(app.getHttpServer()).get('/').expect(200);
       expect(res.headers['content-type']).toContain('text/html');
+      expect(res.text).toContain('<a href="/read/mari">');
+      expect(res.text).toContain("Mari&#39;s life");
+      expect(res.text).toContain('<a href="/read/richard">');
+      expect(res.text).toContain('The interview');
+    });
+
+    it('GET /read/richard -> rendered start page with rewritten links', async () => {
+      const res = await request(app.getHttpServer()).get('/read/richard').expect(200);
+      expect(res.headers['content-type']).toContain('text/html');
+      // meta.json names a-new-job as the start page; its h1 is rendered, not literal.
+      expect(res.text).toContain('<h1>A New Job</h1>');
+      // Same-directory .md links point at reader URLs.
+      expect(res.text).toContain('<a href="/read/richard/rosie">');
+      expect(res.text).toContain('<a href="/read/richard/feed">');
+    });
+
+    it('GET /read/mari -> rendered start page (no h1: title falls back to story title)', async () => {
+      const res = await request(app.getHttpServer()).get('/read/mari').expect(200);
+      expect(res.text).toContain('<a href="/read/mari/end1">');
+      expect(res.text).toContain('<a href="/read/mari/end2">');
+      // mari/start.md has no heading, so the <title> chain falls back to the
+      // meta.json story title.
+      expect(res.text).toContain('<title>Mari&#39;s life — destiny1</title>');
+    });
+
+    it('GET /read/richard/aislop -> a deep page renders like the start page', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/read/richard/aislop')
+        .expect(200);
+      expect(res.text).toContain('<h1>AI Slop</h1>');
+    });
+
+    it('GET /read/no-such-story -> 404 with an HTML body, not JSON', async () => {
+      // Asserts the ReadNotFoundExceptionFilter is actually wired in — a JSON
+      // body here would mean it exists but is not registered.
+      const res = await request(app.getHttpServer())
+        .get('/read/no-such-story')
+        .expect(404);
+      expect(res.headers['content-type']).toContain('text/html');
+      expect(res.text).toContain('<!doctype html>');
+      expect(res.text).toContain('not found');
+    });
+
+    it('GET /read/richard/no-such-page -> 404 HTML too', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/read/richard/no-such-page')
+        .expect(404);
+      expect(res.headers['content-type']).toContain('text/html');
+    });
+
+    it.each([
+      '/read/richard/..%2F..%2FREADME',
+      '/read/..%2F..%2FREADME',
+      '/read/richard/a-new-job.md',
+    ])('GET %s -> 400 (same slug validation as the raw API)', async (path) => {
+      await request(app.getHttpServer()).get(path).expect(400);
     });
   });
 

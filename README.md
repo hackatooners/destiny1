@@ -1,6 +1,19 @@
 # Destiny1 Story API
 
-Choose-your-own-adventure story reader backend, built with [NestJS](https://nestjs.com) as a learning project. Serves markdown pages from the `stories/` directory (each story has a `meta.json` naming its start page) as `text/markdown`. Interactive API docs at `/api`.
+Choose-your-own-adventure story reader backend, built with [NestJS](https://nestjs.com) as a learning project. Stories are markdown pages under `stories/` (each story has a `meta.json` naming its start page and title).
+
+## Routes
+
+For humans (server-rendered HTML, no client JS):
+
+- `GET /` — story index
+- `GET /read/:storyId` — a story's start page
+- `GET /read/:storyId/:pageId` — one page; `[text](page.md)` links are rewritten to reader URLs
+
+For machines (interactive docs at [`/api`](http://localhost:3000/api)):
+
+- `GET /health` — liveness message
+- `GET /stories/:storyId` and `GET /stories/:storyId/:pageId` — raw markdown as `text/markdown`
 
 ## Setup
 

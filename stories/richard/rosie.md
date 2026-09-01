@@ -14,6 +14,7 @@ a hold tone and the sound of Rosie typing on the other end.
 On one end he was happy for all this to end, anxious abou it but also mad that Rosie would not
 seem to understand how important this was to him. He remembered about the AI assitant slop and
 how unprofessional that was.
-As she came back he 
-[rushed to mention it](aislop.md)
-[quieted his mind](quiet.md)
+As she came back he
+
+- [rushed to mention it](aislop.md)
+- [quieted his mind](quiet.md)

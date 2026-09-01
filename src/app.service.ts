@@ -1,9 +1,12 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import type { Dirent } from 'node:fs';
+import { join } from 'node:path';
 import {
   isStorySlug,
   resolveStoryMetaFile,
   resolveStoryPageFile,
+  STORIES_ROOT,
 } from './story.paths.js';
 
 /**
@@ -45,14 +48,110 @@ export function pickStartPage(rawMeta: string | null): string {
   }
 }
 
+/**
+ * Title of a story for the index page, from meta.json's optional "title" key.
+ *
+ * Pure like pickStartPage: no disk, no throwing, every degenerate input (missing
+ * file, malformed JSON, non-string value) degrades to the folder name. Falling
+ * back rather than failing keeps a typo'd meta.json from breaking the whole index.
+ */
+export function pickStoryTitle(rawMeta: string | null, storyId: string): string {
+  if (rawMeta === null) return storyId;
+
+  try {
+    const parsed = JSON.parse(rawMeta) as { title?: unknown } | null;
+    const title = parsed?.title;
+    return typeof title === 'string' && title.length > 0 ? title : storyId;
+  } catch {
+    return storyId;
+  }
+}
+
+/**
+ * Pure predicate deciding which stories/ entries the index shows.
+ *
+ * Two rules, both with real incidents behind them:
+ * 1. The directory name must be a valid slug — a non-slug name would produce an
+ *    index link that 400s on click (the DTO slug validation).
+ * 2. It must contain at least one .md file — stories/tortuga/ was an empty
+ *    directory for a while; without this rule it would appear as a dead link.
+ *
+ * Takes the sibling dirents as its input (rather than reading the directory
+ * itself) so it stays a pure function over data, testable without fixtures.
+ */
+export function isListableStory(name: string, siblingEntries: Dirent[]): boolean {
+  if (!isStorySlug(name)) return false;
+  return siblingEntries.some(
+    (entry) => entry.isFile() && entry.name.endsWith('.md'),
+  );
+}
+
 // @Injectable() lets Nest manage this class and inject it into controllers,
 // so you never call `new AppService()` yourself.
 @Injectable()
 export class AppService {
   private readonly logger = new Logger(AppService.name);
 
-  getHello(): string {
-    return 'Hello World!';
+  getHealth(): string {
+    return 'destiny1 ok';
+  }
+
+  /**
+   * The story index for GET /: one entry per listable story, sorted by id.
+   *
+   * Sorting matters because readdirSync() order is whatever the filesystem
+   * feels like — the index page and its e2e assertions need determinism.
+   *
+   * The readdirSync guard is not paranoia: STORIES_ROOT is env-overridable, and
+   * a typo'd value would otherwise turn GET / into a 500. A missing/invalid
+   * stories directory means "no stories", not "crash".
+   */
+  listStories(): Array<{ id: string; title: string }> {
+    let storyDirs: Dirent[];
+    try {
+      storyDirs = readdirSync(STORIES_ROOT, { withFileTypes: true });
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT' || code === 'ENOTDIR') return [];
+      throw err;
+    }
+
+    return storyDirs
+      .filter((entry) => entry.isDirectory() && this.storyHasPages(entry.name))
+      .map((entry) => ({ id: entry.name, title: this.getStoryTitle(entry.name) }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  // isListableStory needs the directory's OWN contents; readdirSync on each
+  // candidate keeps the "has at least one .md" check honest (tortuga was empty).
+  // Unreadable story dir (EACCES etc.) counts as not listable rather than 500ing
+  // the whole index.
+  private storyHasPages(storyId: string): boolean {
+    try {
+      return isListableStory(
+        storyId,
+        readdirSync(join(STORIES_ROOT, storyId), { withFileTypes: true }),
+      );
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT' || code === 'ENOTDIR' || code === 'EACCES') return false;
+      throw err;
+    }
+  }
+
+  // Title for the index and page chrome: meta.json's "title", falling back to
+  // the folder name. Public so ReadController can fetch one story's title
+  // without paying for a full directory listing.
+  getStoryTitle(storyId: string): string {
+    let raw: string | null = null;
+    try {
+      raw = readFileSync(resolveStoryMetaFile(storyId), 'utf8');
+    } catch (err) {
+      // Missing meta.json is the normal no-title case, not an error.
+      if (err instanceof NotFoundException) return storyId;
+      throw err;
+    }
+    return pickStoryTitle(raw, storyId);
   }
 
   // Entry point: resolve the story's start page, then load it like any other page.

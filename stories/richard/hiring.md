@@ -16,6 +16,6 @@ this kind of call.
 "Which one do you want me to answer first," he asked, and Rosie said it didn't matter, the
 manager just wanted one clear yes to build the offer around.
 
-[he says yes to the travel](travel.md)
-[he pushes back on the overtime](overtime.md)
-[he agrees to the customer call](customer.md)
+- [he says yes to the travel](travel.md)
+- [he pushes back on the overtime](overtime.md)
+- [he agrees to the customer call](customer.md)

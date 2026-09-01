@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { ReadController } from './read.controller.js';
 import { observeModules } from './config/observe.js';
 import { validateEnv } from './config/env.validation.js';
 
@@ -20,7 +21,7 @@ import { validateEnv } from './config/env.validation.js';
     }),
     ...observeModules(),
   ],
-  controllers: [AppController],
+  controllers: [AppController, ReadController],
   providers: [AppService],
 })
 export class AppModule {}
