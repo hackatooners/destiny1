@@ -1,73 +1,63 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { Marked, type Tokens } from 'marked';
 import { STORY_SLUG_PATTERN } from './story.paths.js';
 
 /**
- * Pure presentation layer: markdown in, HTML strings out. No disk access, no Nest
- * types — which keeps it unit-testable without fixtures, the same contract as
- * pickStartPage() in app.service.ts.
+ * Markdown in, HTML strings out. No disk access, no Nest types.
  *
- * SECURITY / TRUST DECISION: there is deliberately NO sanitizer here. Story content
- * is author-controlled (repo committers), the same trust level as the raw
- * /stories/... responses today. marked escapes text-node HTML, so an author who
- * writes <script> in a page gets it displayed, not executed. If stories ever become
- * user-submitted, add a sanitizer (sanitize-html / DOMPurify) in the same commit
- * that change lands in.
+ * SECURITY: no sanitizer here, deliberately. Story content is author-controlled
+ * (repo committers), the same trust level as the raw /stories/... responses.
+ * marked escapes text-node HTML, so an author writing <script> gets it displayed,
+ * not executed. If stories ever become user-submitted, add a sanitizer
+ * (sanitize-html / DOMPurify) in the same commit.
  *
- * Note the dedicated `new Marked(...)` instance. marked.use() mutates a shared
- * global singleton, so configuring it there would leak options between test files;
- * an instance keeps this module's configuration contained.
+ * Uses `new Marked(...)` rather than marked.use(), which mutates a shared global
+ * and would leak these options between test files.
  */
 const md = new Marked({
-  // Soft line breaks inside a paragraph render as <br>. This is a safety net for
-  // authors who put choice links on adjacent lines without list syntax — without
-  // it, CommonMark joins them into one run-on paragraph line.
+  // Soft line breaks render as <br>, so choice links on adjacent lines without
+  // list syntax don't collapse into one run-on line.
   breaks: true,
   renderer: {
     /**
-     * Rewrite same-directory page links to reader URLs.
+     * Rewrite same-directory page links ("end1.md") to reader URLs.
      *
-     * The raw href (e.g. "end1.md") arrives here before any HTML is emitted, so
-     * there is no output to re-parse and no risk of rewriting text that merely
-     * looks like an anchor. (marked does not escape `"` in text nodes, so a
-     * paragraph containing the literal `href="end1.md"` would be a false positive
-     * for a regex over generated HTML — the reason this lives in the hook.)
+     * Lives in the renderer hook rather than a regex over the output because the
+     * href arrives here structurally: a paragraph containing the literal text
+     * `href="end1.md"` can't be mistaken for a link.
      *
-     * Only bare kebab-case .md hrefs are rewritten, reusing the slug rule from
-     * story.paths.ts so a link can never point outside its own story. Everything
-     * else (http(s)://, ../x.md, #anchors, uppercase or spaced names) renders as
-     * the author wrote it.
+     * Only bare kebab-case .md hrefs match, reusing the slug rule from
+     * story.paths.ts so a link cannot point outside its own story. http(s)://,
+     * ../x.md, #anchors and uppercase or spaced names render as authored.
      */
     link(token: Tokens.Link) {
       const slug = STORY_HREF_RE.exec(token.href)?.[1];
       if (slug === undefined) {
-        return false; // not a page link: fall through to marked's default renderer
+        return false; // marked's contract: fall through to the default renderer
       }
-      // token.href is clean here by the regex above, and parseInline() runs the
-      // normal text escapes for the label.
+      // slug is constrained by STORY_HREF_RE; parseInline escapes the label.
       return `<a href="/read/${currentStoryId}/${slug}">${this.parser.parseInline(token.tokens)}</a>`;
     },
   },
 });
 
 /**
- * A bare same-directory page reference: "end1.md" -> capture "end1".
+ * A bare same-directory page reference: "end1.md" -> captures "end1".
  *
- * Derived from STORY_SLUG_PATTERN (single source of truth for what a page id is)
- * so a future slug-rule change keeps link rewriting and routing in agreement.
- * The pattern ships with its own ^...$ anchors, which are stripped before it is
- * embedded here; this regex supplies the anchors and the .md suffix.
+ * Built from STORY_SLUG_PATTERN so link rewriting and routing agree on what a
+ * page id is. That pattern carries its own ^...$ anchors; they are stripped so
+ * this regex can supply its own plus the .md suffix.
  */
 const STORY_HREF_RE = new RegExp(
   `^(${STORY_SLUG_PATTERN.replaceAll('^', '').replaceAll('$', '')})\\.md$`,
 );
 
 /**
- * The story id is needed by the link hook above, but marked's renderer API has no
- * per-call context — the hook's `this` is marked's Renderer, not our instance. So
- * the id rides in this module variable for the duration of one parse. renderPage()
- * sets it immediately before parsing and clears it in a finally, so a throw in
- * between cannot leak it into a later parse of another story. Parsing is
- * synchronous, so no interleaving is possible.
+ * Story id for the link hook above, which has no per-call context of its own
+ * (`this` there is marked's Renderer). renderPage() sets it before parsing and
+ * clears it in a finally, so a throw cannot leak it into the next story. Parsing
+ * is synchronous, so two parses never interleave.
  */
 let currentStoryId: string | undefined;
 
@@ -82,12 +72,11 @@ function escapeHtml(value: string): string {
 }
 
 /**
- * Page <title> and heading fallback chain: the document's first level-1 heading,
- * else the story's title from meta.json.
+ * The page's first level-1 heading, else the story title from meta.json (some
+ * pages, e.g. mari/start.md, have no heading).
  *
- * The heading is found in the token stream, not by regex over the markdown, so a
- * "# heading" inside a fenced code block cannot spoof it. mari/start.md has no
- * heading, which is why the fallback exists.
+ * Read from the token stream rather than by regex, so a "# heading" inside a
+ * fenced code block cannot spoof it.
  */
 export function pickPageTitle(markdown: string, storyTitle: string): string {
   for (const token of md.lexer(markdown)) {
@@ -98,45 +87,71 @@ export function pickPageTitle(markdown: string, storyTitle: string): string {
   return storyTitle;
 }
 
-/** Page chrome shared by every reader page: one layout, one inline stylesheet. */
-function renderLayout({ title, body }: { title: string; body: string }): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)}</title>
-<style>
-:root { color-scheme: light dark; }
-body { margin: 0; font: 100%/1.7 system-ui, sans-serif; }
-main { max-width: 38rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
-nav.top { padding: .5rem 1.25rem; border-bottom: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
-nav.top a { text-decoration: none; }
-main nav.choices { list-style: none; padding: 0; }
-main nav.choices li { margin: .35rem 0; }
-@media (min-width: 40rem) {
-  main nav.choices { display: grid; gap: .6rem; }
-}
-h1 { line-height: 1.25; }
-a { color: inherit; }
-</style>
-</head>
-<body>
-<nav class="top"><a href="/">← Stories</a></nav>
-<main>
-${body}
-</main>
-</body>
-</html>
-`;
+/**
+ * Templates are read once at module load; every request is string interpolation.
+ *
+ * The path is relative to this file, resolving under src/ in vitest and dist/ in
+ * production — nest-cli.json copies views/ with the same layout.
+ */
+const viewsDir = fileURLToPath(new URL('./views/', import.meta.url));
+const layoutTemplate = readFileSync(`${viewsDir}layout.html`, 'utf8');
+const indexTemplate = readFileSync(`${viewsDir}index.html`, 'utf8');
+const notFoundTemplate = readFileSync(`${viewsDir}not-found.html`, 'utf8');
+
+/**
+ * Shift every line of a fragment right to `indent`.
+ *
+ * Blank lines stay bare, so no line is pure whitespace. The trailing newline is
+ * dropped because the template line being replaced already ends in one; keeping
+ * both leaves a blank line before the closing tag.
+ */
+function indentBlock(value: string, indent: string): string {
+  return value
+    .replace(/\n+$/, '')
+    .split('\n')
+    .map((line) => (line === '' ? line : indent + line))
+    .join('\n');
 }
 
 /**
- * Render one story page for the browser.
+ * Fill {{mustache}} placeholders, preserving the template's indentation.
  *
- * The choices list gets a hook so future styling (P2-era polish) has a handle
- * without re-parsing; today it is a plain markdown list rendered as authored.
+ * Two passes per key, because a placeholder appears in two shapes and only one
+ * of them can carry indentation:
+ *
+ *   <title>{{title}}</title>   inline — spliced into a line
+ *         {{body}}             block  — is the line
+ *
+ * Block runs first; whatever it leaves is inline. Callers pass bare fragments
+ * and the template decides where they sit.
+ *
+ * SECURITY: values are never re-scanned, and callers escape author text before
+ * it reaches here, so injected content cannot introduce new placeholders. Keys
+ * are our own literals, so building a RegExp from one is safe.
  */
+function fill(template: string, values: Record<string, string>): string {
+  let html = template;
+  for (const [key, value] of Object.entries(values)) {
+    // Under /m, ^ and $ are line boundaries, so this matches only when nothing
+    // shares the line; the capture group is the indentation to reproduce.
+    const blockPlaceholder = new RegExp(`^([ \\t]*)\\{\\{${key}\\}\\}$`, 'gm');
+    html = html.replaceAll(blockPlaceholder, (_match, indent: string) =>
+      indentBlock(value, indent),
+    );
+
+    // Both replacers are functions: a string replacement would read `$&` or `$1`
+    // in the value as a substitution pattern and mangle it.
+    html = html.replaceAll(`{{${key}}}`, () => value);
+  }
+  return html;
+}
+
+/** Page chrome shared by every reader page. */
+function renderLayout({ title, body }: { title: string; body: string }): string {
+  return fill(layoutTemplate, { title: escapeHtml(title), body });
+}
+
+/** Render one story page for the browser. */
 export function renderPage({ storyId, storyTitle, markdown }: {
   storyId: string;
   storyTitle: string;
@@ -155,17 +170,14 @@ export function renderPage({ storyId, storyTitle, markdown }: {
   });
 }
 
-/** The story index at GET / — one link per story, alphabetical by id. */
+/** The story index at GET / — one link per story, in the order given. */
 export function renderIndex(stories: Array<{ id: string; title: string }>): string {
   const items = stories
-    .map((s) => `  <li><a href="/read/${s.id}">${escapeHtml(s.title)}</a></li>`)
+    .map((s) => `<li><a href="/read/${s.id}">${escapeHtml(s.title)}</a></li>`)
     .join('\n');
   return renderLayout({
     title: 'destiny1 — stories',
-    body: `<h1>Stories</h1>
-<ul>
-${items}
-</ul>`,
+    body: fill(indexTemplate, { items }),
   });
 }
 
@@ -173,8 +185,6 @@ ${items}
 export function renderNotFound(): string {
   return renderLayout({
     title: 'Page not found — destiny1',
-    body: `<h1>Page not found</h1>
-<p>That story or page does not exist.</p>
-<p><a href="/">Back to the story list</a></p>`,
+    body: notFoundTemplate,
   });
 }
