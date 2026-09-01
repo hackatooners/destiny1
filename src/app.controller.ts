@@ -14,8 +14,8 @@ import { StoryIdParams, StoryPageParams } from './story.params.js';
  * What this changes: Chrome/Edge display the source verbatim as plain text, like a .txt
  * (Firefox may offer a download instead). What it does NOT change: no browser renders
  * text/markdown as a formatted document (still true in 2026) — links stay unclickable
- * either way. This is truth in labeling, not rendering; the options for real rendering
- * are in docs/browser-presentation-options.md.
+ * either way. This is truth in labeling, not rendering; the rendered reader lives in
+ * read.controller.ts and the options analysis in ai-chats/browser-presentation-options.md.
  */
 const MARKDOWN_CONTENT_TYPE = 'text/markdown; charset=utf-8';
 
@@ -24,12 +24,12 @@ const MARKDOWN_CONTENT_TYPE = 'text/markdown; charset=utf-8';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get()
+  @Get('health')
   @ApiOperation({ summary: 'Health check' })
-  @ApiOkResponse({ description: 'Greeting string', type: String })
-  getHello(): string {
+  @ApiOkResponse({ description: 'Simple liveness message', type: String })
+  getHealth(): string {
     // Takes no parameters, so the global ValidationPipe is never invoked for this route.
-    return this.appService.getHello();
+    return this.appService.getHealth();
   }
 
   /**
